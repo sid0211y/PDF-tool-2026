@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF分割・結合ツール | PDF Splitter & Merger</title>
+    <title>PDF便利ツールプラス | PDF Splitter, Merger, Editor & Converter</title>
     <!-- Tailwind CSS (Styling) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Material Icons -->
@@ -12,9 +12,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- pdf-lib (PDF processing in browser) -->
+    
+    <!-- 外部処理ライブラリ -->
+    <!-- pdf-lib (PDF生成・操作) -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <!-- pdf.js (PDFの画像レンダリング、サムネイル表示用) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- JSZip (PDFから画像へ変換した際のZIP圧縮用) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
     <script>
+        // pdf.jsのワーカー設定
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
         tailwind.config = {
             theme: {
                 extend: {
@@ -75,40 +85,52 @@
 
     <!-- ヘッダー -->
     <header class="bg-white border-b border-neutral-200 py-4 px-6 sticky top-0 z-20 shadow-sm">
-        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center space-x-3">
+        <div class="max-w-6xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3 self-start lg:self-auto">
                 <div class="bg-primary-500 text-white p-2 rounded-xl flex items-center justify-center shadow-md shadow-primary-200">
                     <span class="material-icons-round text-2xl">picture_as_pdf</span>
                 </div>
                 <div>
-                    <h1 class="text-xl font-semibold tracking-tight text-neutral-800">PDF便利ツール</h1>
+                    <h1 class="text-xl font-semibold tracking-tight text-neutral-800">PDF便利ツールプラス</h1>
                     <p class="text-xs text-neutral-500">安全なブラウザ内完全ローカル処理</p>
                 </div>
             </div>
             
-            <!-- タブ切り替えボタン -->
-            <div class="bg-neutral-100 p-1 rounded-xl flex space-x-1 border border-neutral-200">
-                <button id="tabSplitBtn" class="px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 bg-white text-primary-700 shadow-sm">
+            <!-- タブ切り替えボタン (スクロール可能なコンテナ) -->
+            <div class="bg-neutral-100 p-1 rounded-xl flex space-x-1 border border-neutral-200 overflow-x-auto max-w-full no-scrollbar">
+                <button id="tabSplitBtn" class="px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 bg-white text-primary-700 shadow-sm whitespace-nowrap">
                     <span class="material-icons-round text-base">content_cut</span>
-                    <span>PDF分割</span>
+                    <span>分割</span>
                 </button>
-                <button id="tabMergeBtn" class="px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200/50">
+                <button id="tabMergeBtn" class="px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200/50 whitespace-nowrap">
                     <span class="material-icons-round text-base">call_merge</span>
-                    <span>PDF結合</span>
+                    <span>結合</span>
+                </button>
+                <button id="tabEditBtn" class="px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200/50 whitespace-nowrap">
+                    <span class="material-icons-round text-base">dashboard_customize</span>
+                    <span>編集・並び替え</span>
+                </button>
+                <button id="tabImgConvBtn" class="px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200/50 whitespace-nowrap">
+                    <span class="material-icons-round text-base">compare_arrows</span>
+                    <span>画像⇔PDF</span>
+                </button>
+                <button id="tabPageNumBtn" class="px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200/50 whitespace-nowrap">
+                    <span class="material-icons-round text-base">format_list_numbered</span>
+                    <span>ページ番号追加</span>
                 </button>
             </div>
 
-            <div class="hidden md:flex items-center space-x-2 text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-medium">
+            <div class="hidden xl:flex items-center space-x-2 text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-medium">
                 <span class="material-icons-round text-sm">security</span>
-                <span>外部サーバーにファイルを送信しません</span>
+                <span>外部サーバーへ送信しません</span>
             </div>
         </div>
     </header>
 
     <!-- メインコンテンツ -->
-    <main class="flex-grow max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-start">
+    <main class="flex-grow max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-start">
         
-        <!-- 共通メッセージコンテナ (エラー・警告・成功など) -->
+        <!-- 共通メッセージコンテナ -->
         <div id="messageContainer" class="mb-6 hidden">
             <div id="messageBox" class="p-4 rounded-xl flex items-start space-x-3 text-sm">
                 <span id="messageIcon" class="material-icons-round mt-0.5">info</span>
@@ -123,7 +145,6 @@
 
         <!-- ==================== 1. 分割セクション ==================== -->
         <div id="splitSection" class="space-y-6">
-            <!-- アップロード -->
             <div id="splitUploadArea" class="bg-white rounded-2xl border-2 border-dashed border-neutral-300 hover:border-primary-400 p-8 sm:p-12 text-center cursor-pointer transition-colors relative group shadow-sm">
                 <input type="file" id="splitFileInput" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                 <div class="flex flex-col items-center justify-center space-y-4">
@@ -137,9 +158,7 @@
                 </div>
             </div>
 
-            <!-- ワークプレイス (ファイル選択後に表示) -->
             <div id="splitWorkArea" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all">
-                <!-- 左側：ファイル情報 -->
                 <div class="lg:col-span-1 space-y-6">
                     <div class="bg-white rounded-2xl border border-neutral-200 p-5 shadow-sm space-y-4">
                         <div class="flex items-center justify-between">
@@ -151,7 +170,6 @@
                                 <span>変更する</span>
                             </button>
                         </div>
-                        
                         <div class="bg-neutral-50 rounded-xl p-4 space-y-3 text-sm">
                             <div class="flex flex-col">
                                 <span class="text-xs text-neutral-400 font-medium">ファイル名</span>
@@ -171,35 +189,27 @@
                     </div>
                 </div>
 
-                <!-- 右側：分割の設定 & 実行 -->
                 <div class="lg:col-span-2 space-y-6">
                     <div class="bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm space-y-6">
                         <h3 class="font-semibold text-neutral-700 text-lg flex items-center border-b border-neutral-100 pb-3">
                             <span class="material-icons-round text-primary-500 mr-2">call_split</span>分割方法の選択
                         </h3>
-
-                        <!-- ラジオグループ: 分割モード -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <!-- オプション1: 1ページずつ分割 -->
                             <label class="relative flex flex-col p-4 bg-white border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-50 transition-all select-none group has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50/30">
-                                <input type="radio" name="splitMode" value="every" checked class="sr-only peer" />
+                                <input type="radio" name="splitMode" value="every" checked class="sr-only" />
                                 <div class="flex items-center justify-between mb-2">
                                     <div class="flex items-center space-x-3">
-                                        <span class="material-icons-round text-neutral-400 peer-checked:text-primary-500 group-[.has-[:checked]]:text-primary-500">filter_1</span>
+                                        <span class="material-icons-round text-neutral-400 group-[.has-[:checked]]:text-primary-500">filter_1</span>
                                         <span class="font-medium text-neutral-700">1ページずつすべて分割</span>
                                     </div>
                                     <div class="w-5 h-5 rounded-full border-2 border-neutral-300 flex items-center justify-center group-[.has-[:checked]]:border-primary-500">
                                         <div class="w-2.5 h-2.5 rounded-full bg-primary-500 hidden group-[.has-[:checked]]:block"></div>
                                     </div>
                                 </div>
-                                <span class="text-xs text-neutral-400 leading-relaxed ml-8">
-                                    すべてのページをそれぞれ独立した1ページのPDFファイルに変換し、まとめて保存します。
-                                </span>
+                                <span class="text-xs text-neutral-400 leading-relaxed ml-8">すべてのページをそれぞれ独立した1ページのPDFファイルに変換し、保存します。</span>
                             </label>
-
-                            <!-- オプション2: 範囲指定分割 -->
                             <label class="relative flex flex-col p-4 bg-white border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-50 transition-all select-none group has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50/30">
-                                <input type="radio" name="splitMode" value="range" class="sr-only peer" />
+                                <input type="radio" name="splitMode" value="range" class="sr-only" />
                                 <div class="flex items-center justify-between mb-2">
                                     <div class="flex items-center space-x-3">
                                         <span class="material-icons-round text-neutral-400 group-[.has-[:checked]]:text-primary-500">date_range</span>
@@ -209,46 +219,37 @@
                                         <div class="w-2.5 h-2.5 rounded-full bg-primary-500 hidden group-[.has-[:checked]]:block"></div>
                                     </div>
                                 </div>
-                                <span class="text-xs text-neutral-400 leading-relaxed ml-8">
-                                    指定したページのみを抽出した、新しい1つのPDFを作成します。
-                                </span>
+                                <span class="text-xs text-neutral-400 leading-relaxed ml-8">指定したページ範囲のみを抽出した、新しい1つのPDFを作成します。</span>
                             </label>
                         </div>
 
-                        <!-- 範囲指定入力エリア -->
                         <div id="rangeInputContainer" class="hidden space-y-4 bg-neutral-50 p-4 rounded-xl border border-neutral-200 transition-all">
                             <div class="flex flex-col space-y-2">
-                                <label for="rangeInput" class="text-sm font-medium text-neutral-600 flex items-center">
-                                    ページ範囲を指定してください
-                                </label>
-                                <input type="text" id="rangeInput" placeholder="例: 1-3, 5, 7-10" 
-                                    class="w-full px-4 py-3 rounded-xl border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white shadow-sm font-mono text-sm placeholder-neutral-400" />
+                                <label for="rangeInput" class="text-sm font-medium text-neutral-600">ページ範囲を指定してください</label>
+                                <input type="text" id="rangeInput" placeholder="例: 1-3, 5, 7-10" class="w-full px-4 py-3 rounded-xl border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white font-mono text-sm" />
                             </div>
                             <div class="text-xs text-neutral-500 space-y-1">
-                                <p class="flex items-center"><span class="material-icons-round text-sm mr-1">info</span><strong>書き方のルール:</strong></p>
+                                <p class="flex items-center font-bold"><span class="material-icons-round text-sm mr-1">info</span>書き方のルール:</p>
                                 <ul class="list-disc pl-5 space-y-0.5">
-                                    <li>範囲指定: <code class="bg-neutral-200 px-1 rounded font-mono">1-5</code> （1ページから5ページまで）</li>
+                                    <li>範囲指定: <code class="bg-neutral-200 px-1 rounded font-mono">1-5</code> （1〜5ページ目）</li>
                                     <li>単一指定: <code class="bg-neutral-200 px-1 rounded font-mono">3</code> （3ページ目のみ）</li>
-                                    <li>カンマ区切りで複数指定が可能です: <code class="bg-neutral-200 px-1 rounded font-mono">1-3, 5, 8</code></li>
+                                    <li>カンマ区切りで複数指定可能: <code class="bg-neutral-200 px-1 rounded font-mono">1-3, 5, 8</code></li>
                                 </ul>
                             </div>
                         </div>
 
-                        <!-- 実行ボタン & 進捗表示 -->
                         <div class="pt-2">
-                            <button id="splitProcessBtn" class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl shadow-md shadow-primary-100 hover:shadow-lg hover:shadow-primary-200 transition-all flex items-center justify-center space-x-2 text-base">
+                            <button id="splitProcessBtn" class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl shadow-md shadow-primary-100 transition-all flex items-center justify-center space-x-2 text-base">
                                 <span class="material-icons-round">content_cut</span>
                                 <span id="splitBtnText">PDFを分割・保存する</span>
                             </button>
-
-                            <!-- 分割プログレスバー -->
                             <div id="splitProgressContainer" class="hidden mt-4 space-y-2">
                                 <div class="flex justify-between items-center text-xs font-semibold text-neutral-500">
-                                    <span id="splitProgressText">処理を準備中...</span>
+                                    <span id="splitProgressText">準備中...</span>
                                     <span id="splitProgressPercent">0%</span>
                                 </div>
                                 <div class="w-full bg-neutral-200 h-2 rounded-full overflow-hidden">
-                                    <div id="splitProgressBar" class="bg-primary-500 h-full rounded-full transition-all duration-300 w-0"></div>
+                                    <div id="splitProgressBar" class="bg-primary-500 h-full transition-all duration-300 w-0"></div>
                                 </div>
                             </div>
                         </div>
@@ -257,10 +258,8 @@
             </div>
         </div>
 
-
         <!-- ==================== 2. 結合セクション ==================== -->
         <div id="mergeSection" class="space-y-6 hidden">
-            <!-- アップロード -->
             <div id="mergeUploadArea" class="bg-white rounded-2xl border-2 border-dashed border-neutral-300 hover:border-primary-400 p-8 sm:p-12 text-center cursor-pointer transition-colors relative group shadow-sm">
                 <input type="file" id="mergeFileInput" accept="application/pdf" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                 <div class="flex flex-col items-center justify-center space-y-4">
@@ -274,7 +273,6 @@
                 </div>
             </div>
 
-            <!-- 結合リスト & 設定 (ファイル1つ以上選択後に表示) -->
             <div id="mergeWorkArea" class="hidden bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm space-y-6 transition-all">
                 <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
                     <h3 class="font-semibold text-neutral-700 text-lg flex items-center">
@@ -293,7 +291,6 @@
                     </div>
                 </div>
 
-                <!-- ファイルリストテーブル -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-neutral-600">
                         <thead class="bg-neutral-50 text-neutral-500 uppercase text-xs">
@@ -305,40 +302,355 @@
                                 <th class="py-3 px-4 rounded-r-lg w-32 text-center">操作</th>
                             </tr>
                         </thead>
-                        <tbody id="mergeFileList" class="divide-y divide-neutral-100">
-                            <!-- 行はJavaScriptで動的生成されます -->
-                        </tbody>
+                        <tbody id="mergeFileList" class="divide-y divide-neutral-100"></tbody>
                     </table>
                 </div>
 
-                <!-- 結合の設定 -->
                 <div class="bg-neutral-50 p-4 rounded-xl border border-neutral-200 space-y-3">
                     <div class="flex flex-col space-y-1">
-                        <label for="mergeOutputName" class="text-sm font-medium text-neutral-600">
-                            出力ファイル名（拡張子なし）
-                        </label>
-                        <input type="text" id="mergeOutputName" value="merged_document"
-                            class="max-w-md px-4 py-2.5 rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white shadow-sm text-sm" />
+                        <label for="mergeOutputName" class="text-sm font-medium text-neutral-600">出力ファイル名（拡張子なし）</label>
+                        <input type="text" id="mergeOutputName" value="merged_document" class="max-w-md px-4 py-2.5 rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm" />
                     </div>
                 </div>
 
-                <!-- 結合実行ボタン & 進捗表示 -->
                 <div class="pt-2">
-                    <button id="mergeProcessBtn" class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl shadow-md shadow-primary-100 hover:shadow-lg hover:shadow-primary-200 transition-all flex items-center justify-center space-x-2 text-base">
+                    <button id="mergeProcessBtn" class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl shadow-md shadow-primary-100 transition-all flex items-center justify-center space-x-2 text-base">
                         <span class="material-icons-round">call_merge</span>
                         <span id="mergeBtnText">PDFを結合・保存する</span>
                     </button>
-
-                    <!-- 結合プログレスバー -->
                     <div id="mergeProgressContainer" class="hidden mt-4 space-y-2">
                         <div class="flex justify-between items-center text-xs font-semibold text-neutral-500">
                             <span id="mergeProgressText">結合処理を準備中...</span>
                             <span id="mergeProgressPercent">0%</span>
                         </div>
                         <div class="w-full bg-neutral-200 h-2 rounded-full overflow-hidden">
-                            <div id="mergeProgressBar" class="bg-primary-500 h-full rounded-full transition-all duration-300 w-0"></div>
+                            <div id="mergeProgressBar" class="bg-primary-500 h-full transition-all duration-300 w-0"></div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 3. PDF編集セクション ==================== -->
+        <div id="editSection" class="space-y-6 hidden">
+            <div id="editUploadArea" class="bg-white rounded-2xl border-2 border-dashed border-neutral-300 hover:border-primary-400 p-8 sm:p-12 text-center cursor-pointer transition-colors relative group shadow-sm">
+                <input type="file" id="editFileInput" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div class="flex flex-col items-center justify-center space-y-4">
+                    <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
+                        <span class="material-icons-round text-4xl">dashboard</span>
+                    </div>
+                    <div>
+                        <p class="text-lg font-medium text-neutral-700 group-hover:text-primary-600 transition-colors">編集・並び替えを行うPDFファイルをドラッグ＆ドロップ</p>
+                        <p class="text-sm text-neutral-400 mt-1">または、ここをクリックしてファイルを選択</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="editWorkArea" class="hidden bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm space-y-6 transition-all">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-100 pb-4 gap-4">
+                    <div>
+                        <h3 class="font-semibold text-neutral-700 text-lg flex items-center">
+                            <span class="material-icons-round text-primary-500 mr-2">layers</span>ページの並び替え・編集
+                        </h3>
+                        <p class="text-xs text-neutral-400 mt-1">サムネイル下のコントロールボタンで移動、回転、削除、または別のファイルを末尾に追加できます。</p>
+                    </div>
+                    <div class="flex items-center space-x-3 self-end sm:self-auto">
+                        <button id="editAddMoreBtn" class="text-xs text-primary-600 hover:text-primary-800 font-medium flex items-center space-x-1 py-1.5 px-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors relative">
+                            <input type="file" id="editAddFileInput" accept="application/pdf" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            <span class="material-icons-round text-sm">add</span>
+                            <span>PDFファイルを追加</span>
+                        </button>
+                        <button id="editResetBtn" class="text-xs text-red-500 hover:text-red-700 font-medium flex items-center space-x-1 py-1.5 px-3 bg-red-50 hover:bg-red-100/50 rounded-lg transition-colors">
+                            <span class="material-icons-round text-sm">restart_alt</span>
+                            <span>リセット</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 編集ページリスト (ビジュアルカード配置) -->
+                <div id="editPagesContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 min-h-[200px] bg-neutral-50 p-6 rounded-xl border border-neutral-200/60">
+                    <!-- JavaScriptで動的生成されます -->
+                </div>
+
+                <!-- 出力設定 & 実行 -->
+                <div class="bg-neutral-50 p-4 rounded-xl border border-neutral-200 space-y-3">
+                    <div class="flex flex-col space-y-1">
+                        <label for="editOutputName" class="text-sm font-medium text-neutral-600">出力ファイル名（拡張子なし）</label>
+                        <input type="text" id="editOutputName" value="edited_document" class="max-w-md px-4 py-2.5 rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm" />
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button id="editProcessBtn" class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl shadow-md shadow-primary-100 transition-all flex items-center justify-center space-x-2 text-base">
+                        <span class="material-icons-round">save</span>
+                        <span id="editBtnText">編集したPDFを保存する</span>
+                    </button>
+                    <div id="editProgressContainer" class="hidden mt-4 space-y-2">
+                        <div class="flex justify-between items-center text-xs font-semibold text-neutral-500">
+                            <span id="editProgressText">処理中...</span>
+                            <span id="editProgressPercent">0%</span>
+                        </div>
+                        <div class="w-full bg-neutral-200 h-2 rounded-full overflow-hidden">
+                            <div id="editProgressBar" class="bg-primary-500 h-full transition-all duration-300 w-0"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 4. 画像⇔PDFセクション ==================== -->
+        <div id="imagePdfSection" class="space-y-6 hidden">
+            <!-- 変換方向切り替え -->
+            <div class="flex space-x-4 border-b border-neutral-200 pb-3">
+                <button id="subTabImgToPdf" class="px-4 py-2 text-sm font-semibold border-b-2 border-primary-500 text-primary-600">画像 から PDF へ変換</button>
+                <button id="subTabPdfToImg" class="px-4 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700">PDF から 画像 へ変換</button>
+            </div>
+
+            <!-- 4-A. 画像 → PDF -->
+            <div id="imgToPdfArea" class="space-y-6">
+                <div id="imgToPdfUpload" class="bg-white rounded-2xl border-2 border-dashed border-neutral-300 hover:border-primary-400 p-8 sm:p-12 text-center cursor-pointer transition-colors relative group shadow-sm">
+                    <input type="file" id="imgToPdfInput" accept="image/png, image/jpeg" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    <div class="flex flex-col items-center justify-center space-y-4">
+                        <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
+                            <span class="material-icons-round text-4xl">add_photo_alternate</span>
+                        </div>
+                        <div>
+                            <p class="text-lg font-medium text-neutral-700 group-hover:text-primary-600 transition-colors">結合・変換したい画像（JPG/PNG）をドラッグ＆ドロップ</p>
+                            <p class="text-sm text-neutral-400 mt-1">または、ここをクリックしてまとめて選択 (複数可)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="imgToPdfWorkArea" class="hidden bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm space-y-6">
+                    <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
+                        <h3 class="font-semibold text-neutral-700 text-lg flex items-center">
+                            <span class="material-icons-round text-primary-500 mr-2">collections</span>選択された画像リスト
+                        </h3>
+                        <div class="flex items-center space-x-2">
+                            <button id="imgResetBtn" class="text-xs text-red-500 hover:text-red-700 font-medium py-1 px-2 hover:bg-red-50 rounded-lg transition-colors">クリア</button>
+                        </div>
+                    </div>
+
+                    <!-- 画像一覧 -->
+                    <div id="imgToPdfList" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 bg-neutral-50 p-4 rounded-xl">
+                        <!-- 動的生成 -->
+                    </div>
+
+                    <!-- 設定項目 -->
+                    <div class="bg-neutral-50 p-4 rounded-xl border border-neutral-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="flex flex-col space-y-1">
+                            <label for="imgPdfPageSize" class="text-xs font-bold text-neutral-500 uppercase">用紙サイズ</label>
+                            <select id="imgPdfPageSize" class="px-3 py-2 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500">
+                                <option value="A4">A4 (210 x 297 mm)</option>
+                                <option value="original">画像サイズに合わせる</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col space-y-1">
+                            <label for="imgPdfMargin" class="text-xs font-bold text-neutral-500 uppercase">余白</label>
+                            <select id="imgPdfMargin" class="px-3 py-2 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500">
+                                <option value="none">余白なし</option>
+                                <option value="small">余白あり (小)</option>
+                                <option value="large">余白あり (大)</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col space-y-1">
+                            <label for="imgPdfOutputName" class="text-xs font-bold text-neutral-500 uppercase">出力ファイル名</label>
+                            <input type="text" id="imgPdfOutputName" value="images_converted" class="px-3 py-2 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button id="imgToPdfProcessBtn" class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                            <span class="material-icons-round">picture_as_pdf</span>
+                            <span>画像をPDFに変換・保存</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4-B. PDF → 画像 -->
+            <div id="pdfToImgArea" class="space-y-6 hidden">
+                <div id="pdfToImgUpload" class="bg-white rounded-2xl border-2 border-dashed border-neutral-300 hover:border-primary-400 p-8 sm:p-12 text-center cursor-pointer transition-colors relative group shadow-sm">
+                    <input type="file" id="pdfToImgInput" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    <div class="flex flex-col items-center justify-center space-y-4">
+                        <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
+                            <span class="material-icons-round text-4xl">photo_library</span>
+                        </div>
+                        <div>
+                            <p class="text-lg font-medium text-neutral-700 group-hover:text-primary-600 transition-colors">画像に変換したいPDFファイルをドラッグ＆ドロップ</p>
+                            <p class="text-sm text-neutral-400 mt-1">または、ここをクリックしてファイルを選択</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pdfToImgWorkArea" class="hidden bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm space-y-6">
+                    <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
+                        <h3 class="font-semibold text-neutral-700 text-lg flex items-center">
+                            <span class="material-icons-round text-primary-500 mr-2">image</span>画像切り出し設定
+                        </h3>
+                        <button id="pdfToImgResetBtn" class="text-xs text-red-500 hover:text-red-700 font-medium">変更する</button>
+                    </div>
+
+                    <div class="bg-neutral-50 rounded-xl p-4 space-y-3 text-sm">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-xs text-neutral-400 font-medium block mb-1">ファイル名</span>
+                                <span id="pdfToImgFileName" class="font-semibold text-neutral-700 break-all">-</span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-neutral-400 font-medium block mb-1">総ページ数</span>
+                                <span id="pdfToImgTotalPages" class="text-base font-bold text-primary-500">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-neutral-50 p-4 rounded-xl border border-neutral-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex flex-col space-y-1">
+                            <label for="pdfToImgFormat" class="text-xs font-bold text-neutral-500">出力形式</label>
+                            <select id="pdfToImgFormat" class="px-3 py-2 rounded-lg border border-neutral-300 text-sm focus:outline-none">
+                                <option value="jpeg">JPEG (ファイルサイズ軽量)</option>
+                                <option value="png">PNG (透過対応・高画質)</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col space-y-1">
+                            <label for="pdfToImgQuality" class="text-xs font-bold text-neutral-500">解像度 / 画質</label>
+                            <select id="pdfToImgQuality" class="px-3 py-2 rounded-lg border border-neutral-300 text-sm focus:outline-none">
+                                <option value="1.5">標準 (1.5x)</option>
+                                <option value="2.0">高画質 (2.0x)</option>
+                                <option value="1.0">軽量 (1.0x)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button id="pdfToImgProcessBtn" class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                            <span class="material-icons-round">download</span>
+                            <span>PDFを画像に変換してダウンロード (ZIP一括)</span>
+                        </button>
+                        <div id="pdfToImgProgressContainer" class="hidden mt-4 space-y-2">
+                            <div class="flex justify-between items-center text-xs font-semibold text-neutral-500">
+                                <span id="pdfToImgProgressText">画像生成中...</span>
+                                <span id="pdfToImgProgressPercent">0%</span>
+                            </div>
+                            <div class="w-full bg-neutral-200 h-2 rounded-full overflow-hidden">
+                                <div id="pdfToImgProgressBar" class="bg-primary-500 h-full transition-all duration-300 w-0"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 5. ページ番号追加セクション ==================== -->
+        <div id="pageNumberSection" class="space-y-6 hidden">
+            <div id="pageNumUploadArea" class="bg-white rounded-2xl border-2 border-dashed border-neutral-300 hover:border-primary-400 p-8 sm:p-12 text-center cursor-pointer transition-colors relative group shadow-sm">
+                <input type="file" id="pageNumFileInput" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div class="flex flex-col items-center justify-center space-y-4">
+                    <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
+                        <span class="material-icons-round text-4xl">format_list_numbered</span>
+                    </div>
+                    <div>
+                        <p class="text-lg font-medium text-neutral-700 group-hover:text-primary-600 transition-colors">ページ番号を印字したいPDFファイルをドラッグ＆ドロップ</p>
+                        <p class="text-sm text-neutral-400 mt-1">または、ここをクリックしてファイルを選択</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pageNumWorkArea" class="hidden bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm space-y-6 transition-all">
+                <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
+                    <h3 class="font-semibold text-neutral-700 text-lg flex items-center">
+                        <span class="material-icons-round text-primary-500 mr-2">pin</span>ページ番号のカスタム配置
+                    </h3>
+                    <button id="pageNumResetBtn" class="text-xs text-red-500 hover:text-red-700 font-medium">変更する</button>
+                </div>
+
+                <div class="bg-neutral-50 rounded-xl p-4 space-y-2 text-sm">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col">
+                            <span class="text-xs text-neutral-400 font-medium">ファイル名</span>
+                            <span id="pageNumFileName" class="font-semibold text-neutral-700 break-all">-</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-neutral-400 font-medium">総ページ数</span>
+                            <span id="pageNumTotalPages" class="text-base font-bold text-primary-500">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 設定項目 -->
+                <div class="bg-neutral-50 p-6 rounded-xl border border-neutral-200 space-y-4">
+                    <h4 class="font-semibold text-neutral-700 text-sm">デザインとレイアウト設定</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- スタイル -->
+                        <div class="flex flex-col space-y-2">
+                            <label for="pageNumFormat" class="text-xs font-bold text-neutral-500">番号スタイル</label>
+                            <select id="pageNumFormat" class="px-3 py-2 rounded-lg border border-neutral-300 text-sm bg-white">
+                                <option value="current">1, 2, 3... (数字のみ)</option>
+                                <option value="total">1 / 10, 2 / 10... (総ページ数付き)</option>
+                                <option value="hyphen">- 1 -, - 2 -... (ハイフン装飾)</option>
+                                <option value="page">Page 1, Page 2...</option>
+                            </select>
+                        </div>
+
+                        <!-- 位置 -->
+                        <div class="flex flex-col space-y-2">
+                            <label for="pageNumPosition" class="text-xs font-bold text-neutral-500">配置位置</label>
+                            <select id="pageNumPosition" class="px-3 py-2 rounded-lg border border-neutral-300 text-sm bg-white">
+                                <option value="bottom-center">下部中央 (推奨)</option>
+                                <option value="bottom-right">下部右寄せ</option>
+                                <option value="bottom-left">下部左寄せ</option>
+                                <option value="top-center">上部中央</option>
+                                <option value="top-right">上部右寄せ</option>
+                                <option value="top-left">上部左寄せ</option>
+                            </select>
+                        </div>
+
+                        <!-- 文字サイズ・カラー -->
+                        <div class="flex flex-col space-y-2">
+                            <label for="pageNumFontColor" class="text-xs font-bold text-neutral-500">文字色とサイズ</label>
+                            <div class="flex space-x-2">
+                                <select id="pageNumFontColor" class="w-2/3 px-3 py-2 rounded-lg border border-neutral-300 text-sm bg-white">
+                                    <option value="dark">濃いグレー / 黒</option>
+                                    <option value="light">薄いグレー</option>
+                                    <option value="blue">プライマリーブルー</option>
+                                    <option value="white">白</option>
+                                </select>
+                                <input type="number" id="pageNumFontSize" value="10" min="6" max="24" class="w-1/3 px-3 py-2 rounded-lg border border-neutral-300 text-sm bg-white text-center font-mono" title="文字サイズ (pt)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        <!-- 開始ページ & 開始番号 -->
+                        <div class="flex flex-col space-y-2">
+                            <label for="pageNumStartNum" class="text-xs font-bold text-neutral-500">番号を振り始めるページ & 開始番号</label>
+                            <div class="flex space-x-2">
+                                <select id="pageNumStartPage" class="w-1/2 px-3 py-2 rounded-lg border border-neutral-300 text-sm bg-white">
+                                    <option value="1">1ページ目から</option>
+                                    <option value="2">2ページ目から (表紙を除く)</option>
+                                    <option value="3">3ページ目から</option>
+                                </select>
+                                <div class="w-1/2 flex items-center bg-white border border-neutral-300 rounded-lg px-2">
+                                    <span class="text-xs text-neutral-400 mr-2 whitespace-nowrap">開始番号</span>
+                                    <input type="number" id="pageNumStartNum" value="1" min="1" class="w-full text-sm font-mono focus:outline-none text-right" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 出力名 -->
+                        <div class="flex flex-col space-y-2">
+                            <label for="pageNumOutputName" class="text-xs font-bold text-neutral-500">出力ファイル名</label>
+                            <input type="text" id="pageNumOutputName" value="document_with_pagenum" class="px-3 py-2 rounded-lg border border-neutral-300 text-sm bg-white focus:outline-none" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button id="pageNumProcessBtn" class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                        <span class="material-icons-round">pin</span>
+                        <span>ページ番号を付与して保存</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -347,49 +659,46 @@
 
     <!-- フッター -->
     <footer class="bg-white border-t border-neutral-200 py-6 mt-12 text-center text-xs text-neutral-400">
-        <div class="max-w-5xl mx-auto px-6 space-y-2">
-            <p>© 2026 PDF便利ツール. All rights reserved. すべての処理はブラウザ内のローカル環境で安全に行われます。</p>
-            <p>Powered by <a href="https://pdf-lib.js.org/" target="_blank" rel="noopener noreferrer" class="underline hover:text-neutral-600">pdf-lib.js</a></p>
+        <div class="max-w-6xl mx-auto px-6 space-y-2">
+            <p>© 2026 PDF便利ツールプラス. すべての処理はブラウザ内のローカル環境で安全に行われます。</p>
+            <p>Powered by <a href="https://pdf-lib.js.org/" target="_blank" rel="noopener noreferrer" class="underline hover:text-neutral-600">pdf-lib.js</a> & <a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener noreferrer" class="underline hover:text-neutral-600">pdf.js</a></p>
         </div>
     </footer>
 
 
     <!-- ==================== JavaScript ==================== -->
     <script>
-        // Tab管理
-        let activeTab = 'split'; // 'split' or 'merge'
+        // Tab管理 (5つのタブ)
+        let activeTab = 'split'; // 'split', 'merge', 'edit', 'image-pdf', 'pagenum'
         
-        const tabSplitBtn = document.getElementById('tabSplitBtn');
-        const tabMergeBtn = document.getElementById('tabMergeBtn');
-        const splitSection = document.getElementById('splitSection');
-        const mergeSection = document.getElementById('mergeSection');
+        const tabs = {
+            'split': { btn: document.getElementById('tabSplitBtn'), sec: document.getElementById('splitSection') },
+            'merge': { btn: document.getElementById('tabMergeBtn'), sec: document.getElementById('mergeSection') },
+            'edit': { btn: document.getElementById('tabEditBtn'), sec: document.getElementById('editSection') },
+            'image-pdf': { btn: document.getElementById('tabImgConvBtn'), sec: document.getElementById('imagePdfSection') },
+            'pagenum': { btn: document.getElementById('tabPageNumBtn'), sec: document.getElementById('pageNumberSection') }
+        };
 
-        // タブ切り替え
-        tabSplitBtn.addEventListener('click', () => {
-            switchTab('split');
-        });
-        tabMergeBtn.addEventListener('click', () => {
-            switchTab('merge');
+        Object.keys(tabs).forEach(tabKey => {
+            tabs[tabKey].btn.addEventListener('click', () => switchTab(tabKey));
         });
 
-        function switchTab(tab) {
-            activeTab = tab;
+        function switchTab(tabKey) {
+            activeTab = tabKey;
             closeMessage();
-            if (tab === 'split') {
-                tabSplitBtn.className = "px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 bg-white text-primary-700 shadow-sm";
-                tabMergeBtn.className = "px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200/50";
-                splitSection.classList.remove('hidden');
-                mergeSection.classList.add('hidden');
-            } else {
-                tabMergeBtn.className = "px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 bg-white text-primary-700 shadow-sm";
-                tabSplitBtn.className = "px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200/50";
-                mergeSection.classList.remove('hidden');
-                splitSection.classList.add('hidden');
-            }
+            Object.keys(tabs).forEach(k => {
+                if (k === tabKey) {
+                    tabs[k].btn.className = "px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 bg-white text-primary-700 shadow-sm whitespace-nowrap";
+                    tabs[k].sec.classList.remove('hidden');
+                } else {
+                    tabs[k].btn.className = "px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center space-x-1 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200/50 whitespace-nowrap";
+                    tabs[k].sec.classList.add('hidden');
+                }
+            });
         }
 
 
-        // ==================== [A] 分割機能 ロジック ====================
+        // ==================== [1] 分割機能 ロジック ====================
         let splitPdfBytes = null;
         let splitFileNameVal = "";
         let splitTotalPagesVal = 0;
@@ -414,13 +723,10 @@
         const splitProgressText = document.getElementById('splitProgressText');
         const splitProgressPercent = document.getElementById('splitProgressPercent');
 
-        // ドラッグ＆ドロップ (分割)
         setupDragDrop(splitUploadArea, handleSplitFile);
 
         splitFileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleSplitFile(e.target.files[0]);
-            }
+            if (e.target.files.length > 0) handleSplitFile(e.target.files[0]);
         });
 
         async function handleSplitFile(file) {
@@ -436,9 +742,7 @@
                 const pdfDoc = await PDFLib.PDFDocument.load(splitPdfBytes, { ignoreEncryption: true });
                 splitTotalPagesVal = pdfDoc.getPageCount();
 
-                if (splitTotalPagesVal === 0) {
-                    throw new Error("PDFのページ数が0です。");
-                }
+                if (splitTotalPagesVal === 0) throw new Error("PDFのページ数が0です。");
 
                 splitFileName.textContent = splitFileNameVal;
                 splitTotalPages.textContent = splitTotalPagesVal;
@@ -455,13 +759,22 @@
             }
         }
 
-        splitModes.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                if (e.target.value === 'range') {
-                    rangeInputContainer.classList.remove('hidden');
-                } else {
-                    rangeInputContainer.classList.add('hidden');
-                }
+        // ラジオボタンでの表示切替
+        document.querySelectorAll('input[name="splitMode"]').forEach(radio => {
+            radio.closest('label').addEventListener('click', () => {
+                const actualInput = radio.closest('label').querySelector('input');
+                actualInput.checked = true;
+                // ラジオボタンの変更イベントトリガー
+                document.querySelectorAll('input[name="splitMode"]').forEach(ri => {
+                    const label = ri.closest('label');
+                    if (ri.checked) {
+                        label.classList.add('border-primary-500', 'bg-primary-50/30');
+                        if (ri.value === 'range') rangeInputContainer.classList.remove('hidden');
+                        else rangeInputContainer.classList.add('hidden');
+                    } else {
+                        label.classList.remove('border-primary-500', 'bg-primary-50/30');
+                    }
+                });
             });
         });
 
@@ -473,7 +786,15 @@
             splitTotalPagesVal = 0;
             splitFileInput.value = "";
             rangeInput.value = "";
-            splitModes[0].checked = true;
+            document.querySelectorAll('input[name="splitMode"]')[0].checked = true;
+            document.querySelectorAll('input[name="splitMode"]').forEach((ri, i) => {
+                const label = ri.closest('label');
+                if (i === 0) {
+                    label.classList.add('border-primary-500', 'bg-primary-50/30');
+                } else {
+                    label.classList.remove('border-primary-500', 'bg-primary-50/30');
+                }
+            });
             rangeInputContainer.classList.add('hidden');
 
             splitWorkArea.classList.add('hidden');
@@ -522,7 +843,7 @@
 
                 for (let i = 0; i < total; i++) {
                     const progress = Math.round(((i + 1) / total) * 100);
-                    updateSplitProgress(progress, `${i + 1} / ${total} ページ目を分割処理中...`);
+                    updateSplitProgress(progress, `${i + 1} / ${total} ページ目を分割中...`);
 
                     const newPdfDoc = await PDFLib.PDFDocument.create();
                     const [copiedPage] = await newPdfDoc.copyPages(sourcePdfDoc, [i]);
@@ -566,12 +887,12 @@
                 const newPdfDoc = await PDFLib.PDFDocument.create();
 
                 const targetIndices = pageIndexes.map(p => p - 1);
-                updateSplitProgress(50, `${targetIndices.length}つのページを抽出しマージ中...`);
+                updateSplitProgress(50, `${targetIndices.length}つのページを抽出し結合中...`);
 
                 const copiedPages = await newPdfDoc.copyPages(sourcePdfDoc, targetIndices);
                 copiedPages.forEach(page => newPdfDoc.addPage(page));
 
-                updateSplitProgress(80, 'ファイルを書き出し中...');
+                updateSplitProgress(80, 'ファイルを保存中...');
                 const newPdfBytes = await newPdfDoc.save();
 
                 downloadBlob(newPdfBytes, `${baseName}_extracted.pdf`);
@@ -587,7 +908,7 @@
         }
 
 
-        // ==================== [B] 結合（マージ）機能 ロジック ====================
+        // ==================== [2] 結合機能 ロジック ====================
         let mergeFilesList = []; // 保持オブジェクト: { id, name, bytes, totalPages, size }
         let mergeFileIdCounter = 0;
 
@@ -605,33 +926,14 @@
         const mergeProgressText = document.getElementById('mergeProgressText');
         const mergeProgressPercent = document.getElementById('mergeProgressPercent');
 
-        // ドラッグ＆ドロップ (結合)
-        setupDragDrop(mergeUploadArea, handleMergeFilesDrop);
+        setupDragDrop(mergeUploadArea, (file) => processMergeFiles([file]));
 
         mergeFileInput.addEventListener('change', async (e) => {
-            if (e.target.files.length > 0) {
-                await processMergeFiles(e.target.files);
-            }
+            if (e.target.files.length > 0) await processMergeFiles(e.target.files);
         });
 
         mergeAddMoreInput.addEventListener('change', async (e) => {
-            if (e.target.files.length > 0) {
-                await processMergeFiles(e.target.files);
-            }
-        });
-
-        function handleMergeFilesDrop(file) {
-            // 単数ファイルドロップ時
-            processMergeFiles([file]);
-        }
-
-        // ドラッグ＆ドロップで複数ファイルを一度に処理するための追加ハンドラ
-        mergeUploadArea.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                await processMergeFiles(files);
-            }
+            if (e.target.files.length > 0) await processMergeFiles(e.target.files);
         });
 
         async function processMergeFiles(files) {
@@ -659,7 +961,7 @@
                     addedAny = true;
                 } catch (err) {
                     console.error(err);
-                    showMessage(`${file.name}の読み込みに失敗したためスキップしました。保護されている可能性があります。`, 'error');
+                    showMessage(`${file.name}の読み込みに失敗しました。保護されている可能性があります。`, 'error');
                 }
             }
 
@@ -710,7 +1012,6 @@
             const newIndex = index + direction;
             if (newIndex < 0 || newIndex >= mergeFilesList.length) return;
 
-            // 要素を入れ替え
             const temp = mergeFilesList[index];
             mergeFilesList[index] = mergeFilesList[newIndex];
             mergeFilesList[newIndex] = temp;
@@ -795,9 +1096,791 @@
                 showMessage('PDFファイルの結合・ダウンロードが完了しました。', 'success');
             } catch (err) {
                 console.error(err);
-                showMessage('結合処理中にエラーが発生しました。読み込み不可能なファイルが含まれている場合があります。', 'error');
+                showMessage('結合処理中にエラーが発生しました。破損したファイルが含まれている可能性があります。', 'error');
             } finally {
                 setTimeout(hideMergeProgress, 1500);
+            }
+        });
+
+
+        // ==================== [3] PDF編集・並び替え機能 ロジック ====================
+        let editPages = []; // 保持オブジェクト: { id, fileId, originalFilename, pageIndex, bytes, thumbnailSrc, rotation }
+        let editFileIdCounter = 0;
+        let editPageIdCounter = 0;
+
+        const editUploadArea = document.getElementById('editUploadArea');
+        const editFileInput = document.getElementById('editFileInput');
+        const editAddFileInput = document.getElementById('editAddFileInput');
+        const editWorkArea = document.getElementById('editWorkArea');
+        const editPagesContainer = document.getElementById('editPagesContainer');
+        const editResetBtn = document.getElementById('editResetBtn');
+        const editProcessBtn = document.getElementById('editProcessBtn');
+        const editOutputName = document.getElementById('editOutputName');
+
+        const editProgressContainer = document.getElementById('editProgressContainer');
+        const editProgressBar = document.getElementById('editProgressBar');
+        const editProgressText = document.getElementById('editProgressText');
+        const editProgressPercent = document.getElementById('editProgressPercent');
+
+        setupDragDrop(editUploadArea, (file) => handleEditFileSelect([file]));
+
+        editFileInput.addEventListener('change', async (e) => {
+            if (e.target.files.length > 0) await handleEditFileSelect(e.target.files);
+        });
+
+        editAddFileInput.addEventListener('change', async (e) => {
+            if (e.target.files.length > 0) await handleEditFileSelect(e.target.files);
+        });
+
+        async function handleEditFileSelect(files) {
+            closeMessage();
+            showEditLoadingIndicator(true);
+
+            let addedCount = 0;
+            for (const file of files) {
+                if (file.type !== 'application/pdf') continue;
+
+                try {
+                    const bytes = await file.arrayBuffer();
+                    const fileId = ++editFileIdCounter;
+
+                    // pdf.jsで全ページのサムネイルを生成
+                    const pdfData = new Uint8Array(bytes);
+                    const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+                    const pdf = await loadingTask.promise;
+                    const numPages = pdf.numPages;
+
+                    for (let pIdx = 1; pIdx <= numPages; pIdx++) {
+                        const page = await pdf.getPage(pIdx);
+                        
+                        // サムネイル用Canvasの描画
+                        const viewport = page.getViewport({ scale: 0.4 }); // 軽量化のため小さめ
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        const thumbnailSrc = canvas.toDataURL('image/jpeg', 0.7);
+
+                        editPages.push({
+                            id: ++editPageIdCounter,
+                            fileId: fileId,
+                            originalFilename: file.name,
+                            pageIndex: pIdx - 1, // 0-based
+                            bytes: bytes,
+                            thumbnailSrc: thumbnailSrc,
+                            rotation: 0 // 回転角
+                        });
+                        addedCount++;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showMessage(`ファイル「${file.name}」の読み込み中にエラーが発生しました。`, 'error');
+                }
+            }
+
+            showEditLoadingIndicator(false);
+            if (editPages.length > 0) {
+                renderEditPagesList();
+                editUploadArea.classList.add('hidden');
+                editWorkArea.classList.remove('hidden');
+            }
+        }
+
+        function showEditLoadingIndicator(show) {
+            if (show) {
+                showMessage('PDFを読み込み、プレビュー用サムネイルを生成しています。数秒かかる場合があります...', 'info');
+            } else {
+                closeMessage();
+            }
+        }
+
+        function renderEditPagesList() {
+            editPagesContainer.innerHTML = '';
+
+            if (editPages.length === 0) {
+                editWorkArea.classList.add('hidden');
+                editUploadArea.classList.remove('hidden');
+                return;
+            }
+
+            editPages.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl border border-neutral-200 p-2 shadow-sm flex flex-col justify-between items-center space-y-2 relative group hover:border-primary-400 transition-all';
+                
+                // 回転スタイル
+                const rotateClass = `rotate-${item.rotation}`;
+                
+                card.innerHTML = `
+                    <!-- ページ番号インジケータ -->
+                    <div class="absolute top-1.5 left-1.5 bg-neutral-800/80 text-white text-[10px] px-2 py-0.5 rounded-full font-bold font-mono z-10">
+                        ${index + 1}
+                    </div>
+
+                    <!-- 元情報 -->
+                    <div class="w-full text-center text-[10px] text-neutral-400 truncate px-4" title="${item.originalFilename}">
+                        ${item.originalFilename}
+                    </div>
+
+                    <!-- サムネイル画像 -->
+                    <div class="w-full aspect-[3/4] flex items-center justify-center bg-neutral-100 rounded border border-neutral-100 overflow-hidden relative">
+                        <img src="${item.thumbnailSrc}" class="max-h-full max-w-full object-contain transition-transform duration-200" style="transform: rotate(${item.rotation}deg);" />
+                    </div>
+
+                    <!-- ページインデックスラベル -->
+                    <div class="text-[10px] text-neutral-500 font-medium">
+                        元ページ: ${item.pageIndex + 1}
+                    </div>
+
+                    <!-- コントロールボタン -->
+                    <div class="flex items-center space-x-1 border-t border-neutral-100 pt-1.5 w-full justify-center">
+                        <button onclick="moveEditPage(${index}, -1)" class="p-1 bg-neutral-50 hover:bg-neutral-200 rounded text-neutral-600 transition-colors disabled:opacity-30" title="前へ" ${index === 0 ? 'disabled' : ''}>
+                            <span class="material-icons-round text-sm block">arrow_back</span>
+                        </button>
+                        <button onclick="rotateEditPage(${index})" class="p-1 bg-neutral-50 hover:bg-neutral-200 rounded text-neutral-600 transition-colors" title="右に90度回転">
+                            <span class="material-icons-round text-sm block">rotate_right</span>
+                        </button>
+                        <button onclick="deleteEditPage(${index})" class="p-1 bg-neutral-50 hover:bg-red-50 hover:text-red-600 rounded text-neutral-500 transition-colors" title="削除">
+                            <span class="material-icons-round text-sm block">delete</span>
+                        </button>
+                        <button onclick="moveEditPage(${index}, 1)" class="p-1 bg-neutral-50 hover:bg-neutral-200 rounded text-neutral-600 transition-colors disabled:opacity-30" title="次へ" ${index === editPages.length - 1 ? 'disabled' : ''}>
+                            <span class="material-icons-round text-sm block">arrow_forward</span>
+                        </button>
+                    </div>
+                `;
+                editPagesContainer.appendChild(card);
+            });
+        }
+
+        window.moveEditPage = function(index, direction) {
+            const target = index + direction;
+            if (target < 0 || target >= editPages.length) return;
+
+            const temp = editPages[index];
+            editPages[index] = editPages[target];
+            editPages[target] = temp;
+
+            renderEditPagesList();
+        };
+
+        window.rotateEditPage = function(index) {
+            // 90度回転
+            editPages[index].rotation = (editPages[index].rotation + 90) % 360;
+            renderEditPagesList();
+        };
+
+        window.deleteEditPage = function(index) {
+            editPages.splice(index, 1);
+            renderEditPagesList();
+        };
+
+        editResetBtn.addEventListener('click', () => {
+            editPages = [];
+            editFileIdCounter = 0;
+            editPageIdCounter = 0;
+            editFileInput.value = '';
+            editAddFileInput.value = '';
+            renderEditPagesList();
+            hideEditProgress();
+            closeMessage();
+        });
+
+        function showEditProgress() {
+            editProgressContainer.classList.remove('hidden');
+            editProcessBtn.disabled = true;
+            editProcessBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        function updateEditProgress(percent, text) {
+            editProgressBar.style.width = `${percent}%`;
+            editProgressPercent.textContent = `${percent}%`;
+            editProgressText.textContent = text;
+        }
+
+        function hideEditProgress() {
+            editProgressContainer.classList.add('hidden');
+            editProgressBar.style.width = '0%';
+            editProgressPercent.textContent = '0%';
+            editProcessBtn.disabled = false;
+            editProcessBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        editProcessBtn.addEventListener('click', async () => {
+            closeMessage();
+            if (editPages.length === 0) {
+                showMessage('並び替えるページがありません。最初にPDFをアップロードしてください。', 'error');
+                return;
+            }
+
+            showEditProgress();
+            updateEditProgress(10, '編集用のPDFを新規作成しています...');
+
+            try {
+                const newDoc = await PDFLib.PDFDocument.create();
+                
+                // 元ファイルを効率的に読み込むためのキャッシュ
+                // fileId -> PDFLib.PDFDocument
+                const loadedFilesCache = {};
+
+                const total = editPages.length;
+                for (let i = 0; i < total; i++) {
+                    const item = editPages[i];
+                    updateEditProgress(Math.round((i / total) * 80) + 10, `${i + 1} / ${total} ページ目をコピー中...`);
+
+                    if (!loadedFilesCache[item.fileId]) {
+                        loadedFilesCache[item.fileId] = await PDFLib.PDFDocument.load(item.bytes);
+                    }
+
+                    const sourceDoc = loadedFilesCache[item.fileId];
+                    const [copiedPage] = await newDoc.copyPages(sourceDoc, [item.pageIndex]);
+
+                    // 回転を適用
+                    if (item.rotation !== 0) {
+                        const originalRotation = copiedPage.getRotation().angle;
+                        copiedPage.setRotation(PDFLib.degrees((originalRotation + item.rotation) % 360));
+                    }
+
+                    newDoc.addPage(copiedPage);
+                }
+
+                updateEditProgress(90, '新しいPDFとして保存中...');
+                const newPdfBytes = await newDoc.save();
+
+                let outName = editOutputName.value.trim();
+                if (!outName) outName = 'edited_document';
+                if (!outName.toLowerCase().endsWith('.pdf')) {
+                    outName += '.pdf';
+                }
+
+                downloadBlob(newPdfBytes, outName);
+                updateEditProgress(100, '完了しました！');
+                showMessage('編集（並び替え・追加）したPDFをダウンロードしました。', 'success');
+
+            } catch (err) {
+                console.error(err);
+                showMessage('編集処理中にエラーが発生しました。', 'error');
+            } finally {
+                setTimeout(hideEditProgress, 1500);
+            }
+        });
+
+
+        // ==================== [4] 画像⇔PDF 変換ロジック ====================
+        
+        // サブタブ切替 (画像→PDF / PDF→画像)
+        const subTabImgToPdf = document.getElementById('subTabImgToPdf');
+        const subTabPdfToImg = document.getElementById('subTabPdfToImg');
+        const imgToPdfArea = document.getElementById('imgToPdfArea');
+        const pdfToImgArea = document.getElementById('pdfToImgArea');
+
+        subTabImgToPdf.addEventListener('click', () => {
+            subTabImgToPdf.className = "px-4 py-2 text-sm font-semibold border-b-2 border-primary-500 text-primary-600";
+            subTabPdfToImg.className = "px-4 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700";
+            imgToPdfArea.classList.remove('hidden');
+            pdfToImgArea.classList.add('hidden');
+            closeMessage();
+        });
+
+        subTabPdfToImg.addEventListener('click', () => {
+            subTabPdfToImg.className = "px-4 py-2 text-sm font-semibold border-b-2 border-primary-500 text-primary-600";
+            subTabImgToPdf.className = "px-4 py-2 text-sm font-medium text-neutral-500 hover:text-neutral-700";
+            pdfToImgArea.classList.remove('hidden');
+            imgToPdfArea.classList.add('hidden');
+            closeMessage();
+        });
+
+        // --- 4-A. 画像からPDFへの変換ロジック ---
+        let selectedImages = []; // 配列： { id, name, bytes, format, dataUrl }
+        let imageIdCounter = 0;
+
+        const imgToPdfUpload = document.getElementById('imgToPdfUpload');
+        const imgToPdfInput = document.getElementById('imgToPdfInput');
+        const imgToPdfWorkArea = document.getElementById('imgToPdfWorkArea');
+        const imgToPdfList = document.getElementById('imgToPdfList');
+        const imgResetBtn = document.getElementById('imgResetBtn');
+        const imgToPdfProcessBtn = document.getElementById('imgToPdfProcessBtn');
+
+        setupDragDrop(imgToPdfUpload, (file) => handleImagesSelect([file]));
+
+        imgToPdfInput.addEventListener('change', async (e) => {
+            if (e.target.files.length > 0) await handleImagesSelect(e.target.files);
+        });
+
+        async function handleImagesSelect(files) {
+            closeMessage();
+            let added = false;
+            for (const file of files) {
+                if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
+                    showMessage('JPGまたはPNG形式の画像ファイルのみ選択可能です。', 'info');
+                    continue;
+                }
+
+                try {
+                    const bytes = await file.arrayBuffer();
+                    const format = file.type === 'image/png' ? 'png' : 'jpeg';
+                    
+                    // プレビュー表示用
+                    const dataUrl = await new Promise((resolve) => {
+                        const r = new FileReader();
+                        r.onload = (e) => resolve(e.target.result);
+                        r.readAsDataURL(file);
+                    });
+
+                    selectedImages.push({
+                        id: ++imageIdCounter,
+                        name: file.name,
+                        bytes: bytes,
+                        format: format,
+                        dataUrl: dataUrl
+                    });
+                    added = true;
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
+            if (added) {
+                renderSelectedImages();
+                imgToPdfUpload.classList.add('hidden');
+                imgToPdfWorkArea.classList.remove('hidden');
+            }
+        }
+
+        function renderSelectedImages() {
+            imgToPdfList.innerHTML = '';
+            if (selectedImages.length === 0) {
+                imgToPdfWorkArea.classList.add('hidden');
+                imgToPdfUpload.classList.remove('hidden');
+                return;
+            }
+
+            selectedImages.forEach((img, index) => {
+                const item = document.createElement('div');
+                item.className = 'bg-white rounded-xl border border-neutral-200 p-2 relative flex flex-col justify-between items-center group';
+                item.innerHTML = `
+                    <div class="absolute top-1 left-1 bg-neutral-800/80 text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded-full z-10">
+                        ${index + 1}
+                    </div>
+                    <div class="w-full aspect-square bg-neutral-100 rounded border overflow-hidden flex items-center justify-center">
+                        <img src="${img.dataUrl}" class="max-h-full max-w-full object-contain" />
+                    </div>
+                    <div class="text-[9px] text-neutral-500 font-mono truncate w-full mt-1.5 text-center px-1" title="${img.name}">
+                        ${img.name}
+                    </div>
+                    <div class="flex items-center space-x-1 mt-1 border-t border-neutral-100 pt-1 w-full justify-center">
+                        <button onclick="moveSelectedImage(${index}, -1)" class="p-0.5 hover:bg-neutral-100 rounded text-neutral-500" ${index === 0 ? 'disabled style="opacity:0.3"' : ''}>
+                            <span class="material-icons-round text-sm block">arrow_back</span>
+                        </button>
+                        <button onclick="deleteSelectedImage(${index})" class="p-0.5 hover:bg-red-50 hover:text-red-500 rounded text-neutral-400">
+                            <span class="material-icons-round text-sm block">delete</span>
+                        </button>
+                        <button onclick="moveSelectedImage(${index}, 1)" class="p-0.5 hover:bg-neutral-100 rounded text-neutral-500" ${index === selectedImages.length - 1 ? 'disabled style="opacity:0.3"' : ''}>
+                            <span class="material-icons-round text-sm block">arrow_forward</span>
+                        </button>
+                    </div>
+                `;
+                imgToPdfList.appendChild(item);
+            });
+        }
+
+        window.moveSelectedImage = function(index, direction) {
+            const target = index + direction;
+            if (target < 0 || target >= selectedImages.length) return;
+
+            const temp = selectedImages[index];
+            selectedImages[index] = selectedImages[target];
+            selectedImages[target] = temp;
+
+            renderSelectedImages();
+        };
+
+        window.deleteSelectedImage = function(index) {
+            selectedImages.splice(index, 1);
+            renderSelectedImages();
+        };
+
+        imgResetBtn.addEventListener('click', () => {
+            selectedImages = [];
+            imageIdCounter = 0;
+            imgToPdfInput.value = '';
+            renderSelectedImages();
+            closeMessage();
+        });
+
+        imgToPdfProcessBtn.addEventListener('click', async () => {
+            closeMessage();
+            if (selectedImages.length === 0) return;
+
+            const pageSizeSetting = document.getElementById('imgPdfPageSize').value;
+            const marginSetting = document.getElementById('imgPdfMargin').value;
+            let outputName = document.getElementById('imgPdfOutputName').value.trim();
+
+            if (!outputName) outputName = 'images_converted';
+            if (!outputName.toLowerCase().endsWith('.pdf')) outputName += '.pdf';
+
+            showMessage('画像をPDFにコンパイルしています...', 'info');
+
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.create();
+
+                for (const img of selectedImages) {
+                    let embeddedImg = null;
+                    if (img.format === 'png') {
+                        embeddedImg = await pdfDoc.embedPng(img.bytes);
+                    } else {
+                        embeddedImg = await pdfDoc.embedJpg(img.bytes);
+                    }
+
+                    const originalWidth = embeddedImg.width;
+                    const originalHeight = embeddedImg.height;
+
+                    let pageWidth = 595.275; // A4 w (pt)
+                    let pageHeight = 841.89; // A4 h (pt)
+
+                    if (pageSizeSetting === 'original') {
+                        pageWidth = originalWidth;
+                        pageHeight = originalHeight;
+                    }
+
+                    // 余白計算
+                    let margin = 0;
+                    if (marginSetting === 'small') margin = 20;
+                    else if (marginSetting === 'large') margin = 45;
+
+                    const activeWidth = pageWidth - (margin * 2);
+                    const activeHeight = pageHeight - (margin * 2);
+
+                    // アスペクト比維持で最大サイズ算出
+                    const scale = Math.min(activeWidth / originalWidth, activeHeight / originalHeight);
+                    const drawWidth = originalWidth * scale;
+                    const drawHeight = originalHeight * scale;
+
+                    // 中央配置
+                    const drawX = margin + (activeWidth - drawWidth) / 2;
+                    const drawY = margin + (activeHeight - drawHeight) / 2;
+
+                    const page = pdfDoc.addPage([pageWidth, pageHeight]);
+                    page.drawImage(embeddedImg, {
+                        x: drawX,
+                        y: drawY,
+                        width: drawWidth,
+                        height: drawHeight
+                    });
+                }
+
+                const pdfBytes = await pdfDoc.save();
+                downloadBlob(pdfBytes, outputName);
+
+                showMessage('画像のPDF変換に成功しました。', 'success');
+            } catch (err) {
+                console.error(err);
+                showMessage('PDF変換中にエラーが発生しました。一部の画像フォーマットが非対応か、破損している可能性があります。', 'error');
+            }
+        });
+
+
+        // --- 4-B. PDFから画像への変換ロジック ---
+        let pdfToImgBytes = null;
+        let pdfToImgFileNameVal = "";
+        let pdfToImgTotalPagesVal = 0;
+
+        const pdfToImgUpload = document.getElementById('pdfToImgUpload');
+        const pdfToImgInput = document.getElementById('pdfToImgInput');
+        const pdfToImgWorkArea = document.getElementById('pdfToImgWorkArea');
+        const pdfToImgFileName = document.getElementById('pdfToImgFileName');
+        const pdfToImgTotalPages = document.getElementById('pdfToImgTotalPages');
+        const pdfToImgResetBtn = document.getElementById('pdfToImgResetBtn');
+        const pdfToImgProcessBtn = document.getElementById('pdfToImgProcessBtn');
+
+        const pdfToImgProgressContainer = document.getElementById('pdfToImgProgressContainer');
+        const pdfToImgProgressBar = document.getElementById('pdfToImgProgressBar');
+        const pdfToImgProgressText = document.getElementById('pdfToImgProgressText');
+        const pdfToImgProgressPercent = document.getElementById('pdfToImgProgressPercent');
+
+        setupDragDrop(pdfToImgUpload, handlePdfToImgSelect);
+
+        pdfToImgInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handlePdfToImgSelect(e.target.files[0]);
+        });
+
+        async function handlePdfToImgSelect(file) {
+            if (file.type !== 'application/pdf') {
+                showMessage('PDF形式のファイルのみ対応しています。', 'error');
+                return;
+            }
+            try {
+                closeMessage();
+                pdfToImgFileNameVal = file.name;
+                pdfToImgBytes = await file.arrayBuffer();
+
+                const pdfDoc = await PDFLib.PDFDocument.load(pdfToImgBytes, { ignoreEncryption: true });
+                pdfToImgTotalPagesVal = pdfDoc.getPageCount();
+
+                pdfToImgFileName.textContent = pdfToImgFileNameVal;
+                pdfToImgTotalPages.textContent = pdfToImgTotalPagesVal;
+
+                pdfToImgUpload.classList.add('hidden');
+                pdfToImgWorkArea.classList.remove('hidden');
+            } catch (error) {
+                console.error(error);
+                showMessage('PDFファイルの解析に失敗しました。保護されている可能性があります。', 'error');
+                resetPdfToImg();
+            }
+        }
+
+        pdfToImgResetBtn.addEventListener('click', resetPdfToImg);
+
+        function resetPdfToImg() {
+            pdfToImgBytes = null;
+            pdfToImgFileNameVal = "";
+            pdfToImgTotalPagesVal = 0;
+            pdfToImgInput.value = '';
+            pdfToImgWorkArea.classList.add('hidden');
+            pdfToImgUpload.classList.remove('hidden');
+            hidePdfToImgProgress();
+            closeMessage();
+        }
+
+        function showPdfToImgProgress() {
+            pdfToImgProgressContainer.classList.remove('hidden');
+            pdfToImgProcessBtn.disabled = true;
+            pdfToImgProcessBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        function updatePdfToImgProgress(percent, text) {
+            pdfToImgProgressBar.style.width = `${percent}%`;
+            pdfToImgProgressPercent.textContent = `${percent}%`;
+            pdfToImgProgressText.textContent = text;
+        }
+
+        function hidePdfToImgProgress() {
+            pdfToImgProgressContainer.classList.add('hidden');
+            pdfToImgProgressBar.style.width = '0%';
+            pdfToImgProgressPercent.textContent = '0%';
+            pdfToImgProcessBtn.disabled = false;
+            pdfToImgProcessBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        pdfToImgProcessBtn.addEventListener('click', async () => {
+            closeMessage();
+            if (!pdfToImgBytes) return;
+
+            showPdfToImgProgress();
+            updatePdfToImgProgress(5, 'PDFを読み込んでいます...');
+
+            const format = document.getElementById('pdfToImgFormat').value; // 'jpeg' or 'png'
+            const qualityScale = parseFloat(document.getElementById('pdfToImgQuality').value);
+
+            try {
+                const zip = new JSZip();
+                const baseName = pdfToImgFileNameVal.replace(/\.pdf$/i, '');
+
+                const pdfData = new Uint8Array(pdfToImgBytes);
+                const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                const total = pdf.numPages;
+
+                for (let i = 1; i <= total; i++) {
+                    const progress = Math.round((i / total) * 85) + 5;
+                    updatePdfToImgProgress(progress, `${i} / ${total} ページ目の画像を生成中...`);
+
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: qualityScale });
+
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+
+                    await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+                    // mimeType決定
+                    const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+                    const fileExt = format === 'png' ? 'png' : 'jpg';
+
+                    // BlobデータをZIPに追加
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, 0.9));
+                    const arrayBuffer = await blob.arrayBuffer();
+                    zip.file(`${baseName}_page_${i}.${fileExt}`, arrayBuffer);
+                }
+
+                updatePdfToImgProgress(92, 'ZIP書庫を作成中...');
+                const content = await zip.generateAsync({ type: 'blob' });
+
+                updatePdfToImgProgress(98, '保存ファイル書き出し中...');
+                
+                // ダウンロード実行
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = `${baseName}_converted_images.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                updatePdfToImgProgress(100, '完了しました！');
+                showMessage('PDFのすべてのページを画像変換し、ZIPとして保存しました。', 'success');
+
+            } catch (err) {
+                console.error(err);
+                showMessage('画像変換プロセス中にエラーが発生しました。', 'error');
+            } finally {
+                setTimeout(hidePdfToImgProgress, 1500);
+            }
+        });
+
+
+        // ==================== [5] ページ番号追加機能 ロジック ====================
+        let pageNumPdfBytes = null;
+        let pageNumFileNameVal = "";
+        let pageNumTotalPagesVal = 0;
+
+        const pageNumUploadArea = document.getElementById('pageNumUploadArea');
+        const pageNumFileInput = document.getElementById('pageNumFileInput');
+        const pageNumWorkArea = document.getElementById('pageNumWorkArea');
+        const pageNumFileName = document.getElementById('pageNumFileName');
+        const pageNumTotalPages = document.getElementById('pageNumTotalPages');
+        const pageNumResetBtn = document.getElementById('pageNumResetBtn');
+        const pageNumProcessBtn = document.getElementById('pageNumProcessBtn');
+
+        setupDragDrop(pageNumUploadArea, handlePageNumFileSelect);
+
+        pageNumFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handlePageNumFileSelect(e.target.files[0]);
+        });
+
+        async function handlePageNumFileSelect(file) {
+            if (file.type !== 'application/pdf') {
+                showMessage('PDF形式のファイルのみ対応しています。', 'error');
+                return;
+            }
+            try {
+                closeMessage();
+                pageNumFileNameVal = file.name;
+                pageNumPdfBytes = await file.arrayBuffer();
+
+                const pdfDoc = await PDFLib.PDFDocument.load(pageNumPdfBytes, { ignoreEncryption: true });
+                pageNumTotalPagesVal = pdfDoc.getPageCount();
+
+                pageNumFileName.textContent = pageNumFileNameVal;
+                pageNumTotalPages.textContent = pageNumTotalPagesVal;
+
+                // 開始ページセレクターの上限を構築
+                const startPageSelect = document.getElementById('pageNumStartPage');
+                startPageSelect.innerHTML = '';
+                for (let i = 1; i <= Math.min(5, pageNumTotalPagesVal); i++) {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `${i}ページ目から開始`;
+                    startPageSelect.appendChild(opt);
+                }
+
+                pageNumUploadArea.classList.add('hidden');
+                pageNumWorkArea.classList.remove('hidden');
+            } catch (error) {
+                console.error(error);
+                showMessage('PDFファイルの解析に失敗しました。保護されている可能性があります。', 'error');
+                resetPageNum();
+            }
+        }
+
+        pageNumResetBtn.addEventListener('click', resetPageNum);
+
+        function resetPageNum() {
+            pageNumPdfBytes = null;
+            pageNumFileNameVal = "";
+            pageNumTotalPagesVal = 0;
+            pageNumFileInput.value = '';
+            pageNumWorkArea.classList.add('hidden');
+            pageNumUploadArea.classList.remove('hidden');
+            closeMessage();
+        }
+
+        pageNumProcessBtn.addEventListener('click', async () => {
+            closeMessage();
+            if (!pageNumPdfBytes) return;
+
+            const format = document.getElementById('pageNumFormat').value;
+            const position = document.getElementById('pageNumPosition').value;
+            const fontColorStyle = document.getElementById('pageNumFontColor').value;
+            const fontSize = parseFloat(document.getElementById('pageNumFontSize').value) || 10;
+            const startPage = parseInt(document.getElementById('pageNumStartPage').value) || 1;
+            const startNum = parseInt(document.getElementById('pageNumStartNum').value) || 1;
+            
+            let outputName = document.getElementById('pageNumOutputName').value.trim();
+            if (!outputName) outputName = 'document_with_pagenum';
+            if (!outputName.toLowerCase().endsWith('.pdf')) outputName += '.pdf';
+
+            showMessage('ページ番号を書き込み中...', 'info');
+
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.load(pageNumPdfBytes);
+                const pages = pdfDoc.getPages();
+                const totalPages = pages.length;
+
+                // フォント埋め込み (標準フォント Helvetica)
+                const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+                // カラー設定
+                let color = PDFLib.rgb(0.3, 0.3, 0.3); // 濃いグレー (default: dark)
+                if (fontColorStyle === 'light') color = PDFLib.rgb(0.6, 0.6, 0.6);
+                else if (fontColorStyle === 'blue') color = PDFLib.rgb(0.23, 0.37, 0.55); // プライマリーブルー
+                else if (fontColorStyle === 'white') color = PDFLib.rgb(1, 1, 1);
+
+                let currentNum = startNum;
+
+                for (let i = 0; i < totalPages; i++) {
+                    const pageIndex = i + 1;
+                    if (pageIndex < startPage) {
+                        continue; // 開始ページ未満は番号を振らない
+                    }
+
+                    const page = pages[i];
+                    const { width, height } = page.getSize();
+
+                    // テキスト文字列の構築
+                    let text = `${currentNum}`;
+                    if (format === 'total') text = `${currentNum} / ${totalPages - startPage + startNum}`;
+                    else if (format === 'hyphen') text = `- ${currentNum} -`;
+                    else if (format === 'page') text = `Page ${currentNum}`;
+
+                    // 文字の描画幅から位置（X）を計算
+                    const textWidth = font.widthOfTextAtSize(text, fontSize);
+                    
+                    let x = width / 2 - textWidth / 2; // 下中央・上中央 (default)
+                    let y = 30; // 下部 (default)
+
+                    // X軸の配置判定
+                    if (position.endsWith('right')) {
+                        x = width - textWidth - 40;
+                    } else if (position.endsWith('left')) {
+                        x = 40;
+                    }
+
+                    // Y軸の配置判定
+                    if (position.startsWith('top')) {
+                        y = height - 40;
+                    }
+
+                    // テキスト描画
+                    page.drawText(text, {
+                        x: x,
+                        y: y,
+                        size: fontSize,
+                        font: font,
+                        color: color
+                    });
+
+                    currentNum++;
+                }
+
+                const outputBytes = await pdfDoc.save();
+                downloadBlob(outputBytes, outputName);
+
+                showMessage('PDFへのページ番号書き込みが完了しました！', 'success');
+
+            } catch (err) {
+                console.error(err);
+                showMessage('ページ番号の付与中にエラーが発生しました。', 'error');
             }
         });
 
@@ -823,7 +1906,7 @@
             areaElement.addEventListener('drop', (e) => {
                 const dt = e.dataTransfer;
                 const files = dt.files;
-                if (files.length > 0 && activeTab === 'split') {
+                if (files.length > 0) {
                     handleFileCallback(files[0]);
                 }
             });
@@ -889,6 +1972,11 @@
 
         // 共通メッセージ表示
         function showMessage(text, type = 'info') {
+            const messageContainer = document.getElementById('messageContainer');
+            const messageBox = document.getElementById('messageBox');
+            const messageIcon = document.getElementById('messageIcon');
+            const messageText = document.getElementById('messageText');
+
             messageContainer.classList.remove('hidden');
             messageText.textContent = text;
 
@@ -910,7 +1998,7 @@
         }
 
         window.closeMessage = function() {
-            messageContainer.classList.add('hidden');
+            document.getElementById('messageContainer').classList.add('hidden');
         };
     </script>
 </body>
